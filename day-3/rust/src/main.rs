@@ -18,19 +18,17 @@ fn main() {
 
     while current_line.is_some() {
         running_total += get_part_sum(&previous_line, &current_line, &next_line);
-        previous_line = current_line;
-        current_line = next_line;
+        previous_line = current_line.take();
+        current_line = next_line.take();
 
         let possible_next = line_reader.next();
         if possible_next.is_some() {
             next_line = possible_next.unwrap().ok();
-        } else {
-            next_line = None;
         }
 
 
     }
-    println!("The sum of the engine parts is {}", running_total);
+    println!("The ratio of the gears is {}", running_total);
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -41,40 +39,41 @@ struct EnginePart {
 }
 
 fn get_part_sum(previous_line: &Option<String>, current_line: &Option<String>, next_line: &Option<String>) -> u32 {
-    let mut engine_parts: HashSet<EnginePart> = HashSet::new();
-
+    let mut gear_ratio = 0;
     current_line.clone().expect("Current Line Expected to be some")
         .chars()
         .enumerate()
         .for_each(|(index, c)| {
-            if is_symbol(c) {
-                let parts: Vec<EnginePart> = visit_eight_neighbors(index, previous_line, &current_line, &next_line);
-                for part in parts {
-                    engine_parts.insert(part);
+            if c == '*' {
+                let mut adjacent_parts: HashSet<EnginePart> = visit_eight_neighbors(index, &previous_line, &current_line, &next_line);
+
+                if adjacent_parts.len() == 2 {
+                    gear_ratio = adjacent_parts
+                        .drain()
+                        .fold(1u32, |a, x| a * x.value)
                 }
             }
     });
-
-    engine_parts.iter().fold(0, |a, part: &EnginePart| a + part.value)
+    gear_ratio
 }
 
-fn visit_eight_neighbors(index: usize, prev_line: &Option<String>, current_line: &Option<String>, next_line: &Option<String>) -> Vec<EnginePart> {
-    let mut parts: Vec<EnginePart> = Vec::new();
+fn visit_eight_neighbors(index: usize, prev_line: &Option<String>, current_line: &Option<String>, next_line: &Option<String>) -> HashSet<EnginePart> {
+    let mut parts: HashSet<EnginePart> = HashSet::new();
     // Previous Line
     if prev_line.is_some() {
         let prev_str = prev_line.clone().expect("Expected Previous Line");
         let prev_chars: Vec<char> = prev_str.chars().collect();
         if check_neighbor(index-1, &prev_chars) {
             let opt_part = find_number_slice(index-1, &prev_str);
-            parts.push(opt_part.expect("Expected a part"));
+            parts.insert(opt_part.expect("Expected a part"));
         }
         if check_neighbor(index, &prev_chars) {
             let opt_part = find_number_slice(index, &prev_str);
-            parts.push(opt_part.expect("Expected a part"));
+            parts.insert(opt_part.expect("Expected a part"));
         }
         if check_neighbor(index+1, &prev_chars) {
             let opt_part = find_number_slice(index+1, &prev_str);
-            parts.push(opt_part.expect("Expected a part"));
+            parts.insert(opt_part.expect("Expected a part"));
         }
     }
     // Current Line
@@ -86,11 +85,11 @@ fn visit_eight_neighbors(index: usize, prev_line: &Option<String>, current_line:
 
     if check_neighbor(index-1, &current_chars) {
         let opt_part = find_number_slice(index-1, &current_str);
-        parts.push(opt_part.expect("Expected a part"));
+        parts.insert(opt_part.expect("Expected a part"));
     }
     if check_neighbor(index+1, &current_chars) {
         let opt_part = find_number_slice(index+1, &current_str);
-        parts.push(opt_part.expect("Expected a part"));
+        parts.insert(opt_part.expect("Expected a part"));
     }
 
     // Next Line
@@ -100,15 +99,15 @@ fn visit_eight_neighbors(index: usize, prev_line: &Option<String>, current_line:
         let next_chars: Vec<char> = next_str.chars().collect();
         if check_neighbor(index-1, &next_chars) {
             let opt_part = find_number_slice(index-1, &next_str);
-            parts.push(opt_part.expect("Expected a part"));
+            parts.insert(opt_part.expect("Expected a part"));
         }
         if check_neighbor(index, &next_chars) {
             let opt_part = find_number_slice(index, &next_str);
-            parts.push(opt_part.expect("Expected a part"));
+            parts.insert(opt_part.expect("Expected a part"));
         }
         if check_neighbor(index+1, &next_chars) {
             let opt_part = find_number_slice(index+1, &next_str);
-            parts.push(opt_part.expect("Expected a part"));
+            parts.insert(opt_part.expect("Expected a part"));
         }
     }
 
