@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Error};
 use std::ops::Deref;
 use std::path::Path;
 use std::str::FromStr;
@@ -9,25 +9,12 @@ use std::sync::mpsc::channel;
 fn main() {
     let input_file: File = File::open(Path::new("input.txt")).expect("Expected input.txt file");
     let mut line_reader = BufReader::new(input_file).lines();
+    let all_lines: Vec<String> = line_reader.map( | l| {
+        l.expect("Could not process line")
+    }).collect();
 
+    let running_total = process_all_lines(all_lines);
 
-    let mut previous_line: Option<String> = None;
-    let mut current_line: Option<String> = line_reader.next().unwrap().ok();
-    let mut next_line: Option<String> = line_reader.next().unwrap().ok();
-    let mut running_total = 0u32;
-
-    while current_line.is_some() {
-        running_total += get_part_sum(&previous_line, &current_line, &next_line);
-        previous_line = current_line.take();
-        current_line = next_line.take();
-
-        let possible_next = line_reader.next();
-        if possible_next.is_some() {
-            next_line = possible_next.unwrap().ok();
-        }
-
-
-    }
     println!("The ratio of the gears is {}", running_total);
 }
 
@@ -36,6 +23,28 @@ struct EnginePart {
     start: usize,
     end: usize,
     value: u32
+}
+
+fn process_all_lines(all_lines: Vec<String>) -> u32 {
+    let mut all_lines_iter = all_lines.into_iter();
+    let mut previous_line: Option<String> = None;
+    let mut current_line: Option<String> = all_lines_iter.next();
+    let mut next_line: Option<String> = all_lines_iter.next();
+    let mut running_total = 0u32;
+
+    while current_line.is_some() {
+        running_total += get_part_sum(&previous_line, &current_line, &next_line);
+        previous_line = current_line.take();
+        current_line = next_line.take();
+
+        let possible_next = all_lines_iter.next();
+        if possible_next.is_some() {
+            next_line = possible_next;
+        } else {
+            next_line = None;
+        }
+    }
+    running_total
 }
 
 fn get_part_sum(previous_line: &Option<String>, current_line: &Option<String>, next_line: &Option<String>) -> u32 {
@@ -164,4 +173,23 @@ fn find_number_slice(index: usize, line: &str) -> Option<EnginePart>{
 
 fn is_symbol(c: char) -> bool{
     return (c >= '!' && c < '.') || (c == '/') || (c >= ':' && c <= '@') || (c >= '[' && c <= '`') || (c >= '{' && c <= '~')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_part_two() {
+        let example: String =
+            String::from("467..114..\n...*......\n..35..633.\n......#...\n617*......\n.....+.58.\n..592.....\n......755.\n...$.*....\n.664.598..\n");
+
+        let example_string: Vec<String> = example.split("\n").map( | s: &str| {
+            String::from(s)
+        }).collect();
+
+
+        let gear_ratio = process_all_lines(example_string);
+        assert_eq!(467835, gear_ratio);
+    }
 }
